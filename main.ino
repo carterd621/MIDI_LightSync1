@@ -1,7 +1,3 @@
-//allow user input for delay times
-//color changes
-//velocity changes intensity
-
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <MIDIUSB_Defs.h>
@@ -20,6 +16,8 @@
 
 //define LED object
 #define NUM_LEDS 50 //based on number of chipsets in LED strip
+#define LEDSTART 0 //define starting LED on the strip
+#define LEDEND 49 //define ending LED on the strip
 CRGB leds[NUM_LEDS];
 
 //array of intensities; initializes all intensity values to be 0
@@ -48,18 +46,14 @@ int map(int key){
     //scale this to be 0 to 87
     key -= 21;
     //scale to be 0 to 50 to match LEDs
-    key = key/50;
+    key = key/NUM_LEDS;
     return key;
 }
 
 //decay step function (reads from POT and changes decay step based on POT input)
 
-//define array for each LED's intensity
-
-//define ISRs
-
-//ISR should set starting intensity value based on the velocity (intensity(8bit) = 2 * velocity(7bit))
-ISR(USART1_RX_vect){ //interrupt for
+//interrupt for MIDI input
+ISR(USART1_RX_vect){
     //ISR should filter out NOTE ONs with velocity > 0
     //MIDI.read();
     if(1){
@@ -69,9 +63,7 @@ ISR(USART1_RX_vect){ //interrupt for
     }
 }
 
-
-//second ISR changes the color
-//trigger from a pin hardware interrupt
+//second ISR changes the color (on pin change)
 ISR(PCINT0_vect){
     if(cs>=9) //ensures button will loop through color array
         cs = 0;
@@ -79,7 +71,15 @@ ISR(PCINT0_vect){
         cs++;
 }
 
-//set up a timer to change values of intensity
+//set up a timer to change values of intensity??
+
+//things to send to another file for lights
+void blackout() {
+  for (int i = 0; i < 50; i++) {
+    leds[i] = CRGB::Black;
+  }
+  FastLED.show();
+}
 
 int main(void){
     //ALL SETUP CODE HERE
@@ -97,7 +97,9 @@ int main(void){
 
     //setup LED strip for use
     FastLED.addLeds<WS2811, LED_PIN, RGB>(leds, NUM_LEDS);
-    //blackout();
+
+    //blackout the strip to erase any previous data
+    blackout();
 
     //setup MIDI input
     //MIDI.begin(1); //listening to channel 1
@@ -105,12 +107,13 @@ int main(void){
     while(1){ //looping code
         //constantly write values to each LED chipset
         for(int i=0; i<50; i++){
-            if (cs==9)
+            if (cs==9) //takes care of white case; colorPalette does not have a white setting
                 leds[i]=CHSV(0,0,intensity[i]);
             else
                 leds[i]=CHSV(colorPalette[cs],255,intensity[i]);
+            FastLED.show();
         }
     }
-    
+
     return 0;
 }
